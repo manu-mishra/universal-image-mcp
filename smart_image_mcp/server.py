@@ -14,7 +14,7 @@ REPO_URL = "https://github.com/manu-mishra/smart-Image-mcp"
 
 mcp = FastMCP(
     "smart-image-mcp",
-    instructions=f"""Multi-provider image generation server supporting AWS Bedrock, OpenAI, and Google Gemini.
+    instructions=f"""Multi-provider image generation server supporting AWS Bedrock (Nova Canvas), OpenAI/ChatGPT (GPT Image), and Google Gemini (Nano Banana, Imagen).
 
 Use list_models() to see available models, generate_image() to create images, transform_image() to edit existing images, and prompt_guide() for tips on writing effective prompts.
 
