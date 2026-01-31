@@ -1,19 +1,27 @@
-"""Smart Image MCP Server"""
+"""Universal Image MCP Server"""
 import os
-import logging
 from io import BytesIO
 from datetime import datetime
 from typing import Optional
 import PIL.Image
 from mcp.server.fastmcp import FastMCP
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+FORBIDDEN_PATHS = ['/etc', '/sys', '/proc', '/dev', '/boot', '/root', '/var', '/usr', '/bin', '/sbin']
+REPO_URL = "https://github.com/manu-mishra/universal-image-mcp"
 
-REPO_URL = "https://github.com/manu-mishra/smart-Image-mcp"
+def validate_output_path(path: str) -> str:
+    """Validate output path to prevent path traversal attacks."""
+    expanded = os.path.expanduser(path)
+    abs_path = os.path.abspath(expanded)
+    
+    for forbidden in FORBIDDEN_PATHS:
+        if abs_path.startswith(forbidden):
+            raise ValueError(f"Cannot write to system directory: {abs_path}")
+    
+    return abs_path
 
 mcp = FastMCP(
-    "smart-image-mcp",
+    "universal-image-mcp",
     instructions=f"""Multi-provider image generation server supporting AWS Bedrock (Nova Canvas), OpenAI/ChatGPT (GPT Image), and Google Gemini (Nano Banana, Imagen).
 
 Use list_models() to see available models, generate_image() to create images, transform_image() to edit existing images, and prompt_guide() for tips on writing effective prompts.
@@ -115,14 +123,15 @@ def generate_image(
         reference_image: Optional. Path to an existing image to use as style/content reference.
                          The model will generate a new image influenced by this reference.
         width: Optional. Image width in pixels. Default: 1024. Common values: 512, 768, 1024, 1280.
-               Note: Some models only support specific sizes.
+               Note: Some models only support specific sizes. Max: 4096px.
         height: Optional. Image height in pixels. Default: 1024. Common values: 512, 768, 1024, 1280.
-                Note: Some models only support specific sizes.
+                Note: Some models only support specific sizes. Max: 4096px.
     
     Returns:
         Success message with output path, or error description.
     """
     try:
+        output_path = validate_output_path(output_path)
         provider = get_provider(model_id)
         
         ref_img = None
@@ -135,13 +144,11 @@ def generate_image(
         image_data = provider.generate(prompt, ref_img, width, height)
         
         image = PIL.Image.open(BytesIO(image_data))
-        output_path = os.path.expanduser(output_path)
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         image.save(output_path)
         
         return f"Image saved to {output_path}"
     except Exception as e:
-        logger.error(f"generate_image error: {e}")
         return f"Error: {e}"
 
 
@@ -171,18 +178,18 @@ def transform_image(
         if not os.path.exists(image_path):
             return f"Error: Image not found at {image_path}"
         
+        output_path = validate_output_path(output_path)
+        
         source = PIL.Image.open(image_path)
         provider = get_provider(model_id)
         image_data = provider.transform(source, prompt)
         
         image = PIL.Image.open(BytesIO(image_data))
-        output_path = os.path.expanduser(output_path)
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         image.save(output_path)
         
         return f"Image saved to {output_path}"
     except Exception as e:
-        logger.error(f"transform_image error: {e}")
         return f"Error: {e}"
 
 
@@ -258,8 +265,8 @@ def prompt_guide() -> str:
 7. **Consider negative space**: "minimalist composition with breathing room"
 
 ---
-⭐ Found this helpful? Star the repo: https://github.com/manu-mishra/smart-Image-mcp
-🐛 Issues or feature requests: https://github.com/manu-mishra/smart-Image-mcp/issues
+⭐ Found this helpful? Star the repo: https://github.com/manu-mishra/universal-image-mcp
+🐛 Issues or feature requests: https://github.com/manu-mishra/universal-image-mcp/issues
 """
 
 

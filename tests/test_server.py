@@ -1,7 +1,7 @@
 import os
 import pytest
 from unittest.mock import Mock
-from smart_image_mcp.server import list_models, generate_image, transform_image, get_provider, is_enabled, prompt_guide
+from universal_image_mcp.server import list_models, generate_image, transform_image, get_provider, is_enabled, prompt_guide
 
 FAKE_PNG = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\n\x00\x00\x00\n\x08\x02\x00\x00\x00\x02PX\xea\x00\x00\x00\x13IDATx\x9cc\xfc\xcf\x80\x0f0\xe1\x95e\x18\xa9\xd2\x00A,\x01\x13y\xed\xba&\x00\x00\x00\x00IEND\xaeB`\x82'
 
@@ -67,7 +67,7 @@ class TestGenerateImage:
         mocker.patch.dict(os.environ, {"ENABLE_GEMINI": "true"})
         mock_provider = Mock()
         mock_provider.generate.return_value = FAKE_PNG
-        mocker.patch('smart_image_mcp.server.get_provider', return_value=mock_provider)
+        mocker.patch('universal_image_mcp.server.get_provider', return_value=mock_provider)
         
         output = tmp_path / "test.png"
         result = generate_image(TEST_PROMPTS["editorial_portrait"], "models/gemini-2.5-flash-image", str(output))
@@ -83,7 +83,7 @@ class TestGenerateImage:
         mocker.patch.dict(os.environ, {"ENABLE_AWS": "true"})
         mock_provider = Mock()
         mock_provider.generate.return_value = FAKE_PNG
-        mocker.patch('smart_image_mcp.server.get_provider', return_value=mock_provider)
+        mocker.patch('universal_image_mcp.server.get_provider', return_value=mock_provider)
         
         output = tmp_path / "wide.png"
         result = generate_image(TEST_PROMPTS["architectural"], "amazon.nova-canvas-v1:0", str(output), width=1280, height=720)
@@ -95,7 +95,7 @@ class TestGenerateImage:
         mocker.patch.dict(os.environ, {"ENABLE_OPENAI": "true"})
         mock_provider = Mock()
         mock_provider.generate.return_value = FAKE_PNG
-        mocker.patch('smart_image_mcp.server.get_provider', return_value=mock_provider)
+        mocker.patch('universal_image_mcp.server.get_provider', return_value=mock_provider)
         
         result = generate_image(TEST_PROMPTS["product"], "gpt-image-1.5", str(tmp_path / "output.png"), reference_image="/nonexistent/image.png")
         assert "not found" in result.lower()
@@ -106,7 +106,7 @@ class TestTransformImage:
         mocker.patch.dict(os.environ, {"ENABLE_AWS": "true"})
         mock_provider = Mock()
         mock_provider.transform.return_value = FAKE_PNG
-        mocker.patch('smart_image_mcp.server.get_provider', return_value=mock_provider)
+        mocker.patch('universal_image_mcp.server.get_provider', return_value=mock_provider)
         
         # Create a source image
         source = tmp_path / "source.png"
@@ -157,7 +157,7 @@ class TestListModels:
 @pytest.mark.integration
 class TestIntegrationAWS:
     def test_list_aws_models(self):
-        from smart_image_mcp.providers import get_aws_models
+        from universal_image_mcp.providers import get_aws_models
         models = get_aws_models()
         assert len(models) > 0
         assert any("nova-canvas" in m["id"] for m in models)
@@ -181,7 +181,7 @@ class TestIntegrationAWS:
 @pytest.mark.integration
 class TestIntegrationOpenAI:
     def test_list_openai_models(self):
-        from smart_image_mcp.providers import get_openai_models
+        from universal_image_mcp.providers import get_openai_models
         models = get_openai_models()
         assert isinstance(models, list)
         assert any("gpt-image" in m["id"] for m in models)
@@ -197,7 +197,7 @@ class TestIntegrationOpenAI:
 @pytest.mark.integration
 class TestIntegrationGemini:
     def test_list_gemini_models(self):
-        from smart_image_mcp.providers import get_gemini_models
+        from universal_image_mcp.providers import get_gemini_models
         models = get_gemini_models()
         assert len(models) > 0
 
