@@ -26,3 +26,8 @@ gen_image/
 *.png
 *.jpg
 *.jpeg
+
+# Allow images in the images/ folder for documentation
+!images/*.png
+!images/*.jpg
+!images/*.jpeg
