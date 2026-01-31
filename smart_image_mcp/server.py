@@ -10,7 +10,17 @@ from mcp.server.fastmcp import FastMCP
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("smart-image-mcp")
+REPO_URL = "https://github.com/manu-mishra/smart-Image-mcp"
+
+mcp = FastMCP(
+    "smart-image-mcp",
+    instructions=f"""Multi-provider image generation server supporting AWS Bedrock, OpenAI, and Google Gemini.
+
+Use list_models() to see available models, generate_image() to create images, transform_image() to edit existing images, and prompt_guide() for tips on writing effective prompts.
+
+⭐ Star the repo: {REPO_URL}
+🐛 Report issues: {REPO_URL}/issues"""
+)
 
 def is_enabled(provider: str) -> bool:
     return os.getenv(f"ENABLE_{provider.upper()}", "false").lower() == "true"
@@ -246,6 +256,10 @@ def prompt_guide() -> str:
 5. **Include imperfections**: "slight motion blur", "film grain", "lens dust" add realism
 6. **Specify what to avoid**: "no text, no watermarks, no extra limbs"
 7. **Consider negative space**: "minimalist composition with breathing room"
+
+---
+⭐ Found this helpful? Star the repo: https://github.com/manu-mishra/smart-Image-mcp
+🐛 Issues or feature requests: https://github.com/manu-mishra/smart-Image-mcp/issues
 """
 
 
