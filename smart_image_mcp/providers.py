@@ -40,16 +40,24 @@ EXCLUDED_MODELS = {
 
 def get_aws_models():
     import boto3
-    region = os.getenv("AWS_REGION", "us-east-1")
-    profile = os.getenv("AWS_PROFILE")
-    session = boto3.Session(profile_name=profile) if profile else boto3.Session()
-    client = session.client("bedrock", region_name=region)
-    response = client.list_foundation_models(byOutputModality="IMAGE")
-    
-    excluded = EXCLUDED_MODELS.get("aws", [])
-    return [{"id": m["modelId"], "name": m["modelName"], "provider": m["providerName"],
-             "input": m["inputModalities"], "status": m["modelLifecycle"]["status"]} 
-            for m in response.get("modelSummaries", []) if m["modelId"] not in excluded]
+    from botocore.exceptions import TokenRetrievalError, NoCredentialsError, ClientError
+    try:
+        region = os.getenv("AWS_REGION", "us-east-1")
+        profile = os.getenv("AWS_PROFILE")
+        session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+        client = session.client("bedrock", region_name=region)
+        response = client.list_foundation_models(byOutputModality="IMAGE")
+        
+        excluded = EXCLUDED_MODELS.get("aws", [])
+        return [{"id": m["modelId"], "name": m["modelName"], "provider": m["providerName"],
+                 "input": m["inputModalities"], "status": m["modelLifecycle"]["status"]} 
+                for m in response.get("modelSummaries", []) if m["modelId"] not in excluded]
+    except TokenRetrievalError:
+        raise ValueError("AWS SSO session expired. Run 'aws sso login' to refresh.")
+    except NoCredentialsError:
+        raise ValueError("AWS credentials not found. Configure AWS_PROFILE or credentials.")
+    except ClientError as e:
+        raise ValueError(f"AWS API error: {e.response['Error']['Message']}")
 
 def get_openai_models():
     from openai import OpenAI
@@ -87,6 +95,18 @@ class AWSProvider:
             self._client = session.client("bedrock-runtime", region_name=region)
         return self._client
     
+    def _call_model(self, body: str) -> dict:
+        from botocore.exceptions import TokenRetrievalError, NoCredentialsError, ClientError
+        try:
+            response = self.client.invoke_model(modelId=self.model, body=body)
+            return json.loads(response["body"].read())
+        except TokenRetrievalError:
+            raise ValueError("AWS SSO session expired. Run 'aws sso login' to refresh.")
+        except NoCredentialsError:
+            raise ValueError("AWS credentials not found. Configure AWS_PROFILE or credentials.")
+        except ClientError as e:
+            raise ValueError(f"AWS API error: {e.response['Error']['Message']}")
+    
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
         if reference:
             return self.transform(reference, prompt)
@@ -100,8 +120,7 @@ class AWSProvider:
         else:
             body = json.dumps({"text_prompts": [{"text": prompt}], "cfg_scale": 10, "steps": 50, "width": width, "height": height})
         
-        response = self.client.invoke_model(modelId=self.model, body=body)
-        result = json.loads(response["body"].read())
+        result = self._call_model(body)
         
         if "nova-canvas" in self.model:
             return base64.b64decode(result["images"][0])
@@ -121,8 +140,7 @@ class AWSProvider:
         else:
             body = json.dumps({"text_prompts": [{"text": prompt}], "init_image": init_image, "cfg_scale": 10, "steps": 50})
         
-        response = self.client.invoke_model(modelId=self.model, body=body)
-        result = json.loads(response["body"].read())
+        result = self._call_model(body)
         
         if "nova-canvas" in self.model:
             return base64.b64decode(result["images"][0])
@@ -138,25 +156,40 @@ class OpenAIProvider:
     def client(self):
         if self._client is None:
             from openai import OpenAI
-            self._client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY not set")
+            self._client = OpenAI(api_key=api_key)
         return self._client
     
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
+        from openai import AuthenticationError, APIError
         if reference:
             return self.transform(reference, prompt)
-        response = self.client.images.generate(model=self.model, prompt=prompt, n=1, size=f"{width}x{height}")
-        return base64.b64decode(response.data[0].b64_json)
+        try:
+            response = self.client.images.generate(model=self.model, prompt=prompt, n=1, size=f"{width}x{height}")
+            return base64.b64decode(response.data[0].b64_json)
+        except AuthenticationError:
+            raise ValueError("OpenAI API key invalid or expired. Check OPENAI_API_KEY.")
+        except APIError as e:
+            raise ValueError(f"OpenAI API error: {e.message}")
     
     def transform(self, image: PIL.Image.Image, prompt: str) -> bytes:
-        buffer = BytesIO()
-        image.save(buffer, format="PNG")
-        buffer.seek(0)
-        response = self.client.images.edit(
-            model=self.model,
-            image=[("image.png", buffer, "image/png")],
-            prompt=prompt
-        )
-        return base64.b64decode(response.data[0].b64_json)
+        from openai import AuthenticationError, APIError
+        try:
+            buffer = BytesIO()
+            image.save(buffer, format="PNG")
+            buffer.seek(0)
+            response = self.client.images.edit(
+                model=self.model,
+                image=[("image.png", buffer, "image/png")],
+                prompt=prompt
+            )
+            return base64.b64decode(response.data[0].b64_json)
+        except AuthenticationError:
+            raise ValueError("OpenAI API key invalid or expired. Check OPENAI_API_KEY.")
+        except APIError as e:
+            raise ValueError(f"OpenAI API error: {e.message}")
 
 
 class GeminiProvider:
@@ -168,18 +201,28 @@ class GeminiProvider:
     def client(self):
         if self._client is None:
             from google import genai
-            self._client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY not set")
+            self._client = genai.Client(api_key=api_key)
         return self._client
+    
+    def _generate_content(self, contents, config):
+        from google.api_core.exceptions import Unauthenticated, PermissionDenied, GoogleAPIError
+        try:
+            return self.client.models.generate_content(model=self.model, contents=contents, config=config)
+        except Unauthenticated:
+            raise ValueError("Gemini API key invalid. Check GEMINI_API_KEY.")
+        except PermissionDenied:
+            raise ValueError("Gemini API key lacks permission for this model.")
+        except GoogleAPIError as e:
+            raise ValueError(f"Gemini API error: {e.message}")
     
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
         if reference:
             return self.transform(reference, prompt)
         from google.genai import types
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=[prompt],
-            config=types.GenerateContentConfig(response_modalities=['Text', 'Image'])
-        )
+        response = self._generate_content([prompt], types.GenerateContentConfig(response_modalities=['Text', 'Image']))
         for part in response.candidates[0].content.parts:
             if part.inline_data is not None:
                 return part.inline_data.data
@@ -187,11 +230,7 @@ class GeminiProvider:
     
     def transform(self, image: PIL.Image.Image, prompt: str) -> bytes:
         from google.genai import types
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=[image, prompt],
-            config=types.GenerateContentConfig(response_modalities=['Text', 'Image'])
-        )
+        response = self._generate_content([image, prompt], types.GenerateContentConfig(response_modalities=['Text', 'Image']))
         for part in response.candidates[0].content.parts:
             if part.inline_data is not None:
                 return part.inline_data.data
