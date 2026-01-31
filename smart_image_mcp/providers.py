@@ -1,48 +1,19 @@
-"""Image generation providers"""
+"""Image generation providers - lazy initialization"""
 import os
 import json
 import base64
 from io import BytesIO
 import PIL.Image
-import boto3
-from openai import OpenAI
-from google import genai
-from google.genai import types
-
-# --- Model listing ---
-
-def get_aws_models():
-    region = os.getenv("AWS_REGION", "us-east-1")
-    profile = os.getenv("AWS_PROFILE")
-    session = boto3.Session(profile_name=profile) if profile else boto3.Session()
-    client = session.client("bedrock", region_name=region)
-    response = client.list_foundation_models(byOutputModality="IMAGE")
-    
-    excluded = EXCLUDED_MODELS.get("aws", [])
-    return [{"id": m["modelId"], "name": m["modelName"], "provider": m["providerName"],
-             "input": m["inputModalities"], "status": m["modelLifecycle"]["status"]} 
-            for m in response.get("modelSummaries", []) if m["modelId"] not in excluded]
-
-def get_openai_models():
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    response = client.models.list()
-    
-    excluded = EXCLUDED_MODELS.get("openai", [])
-    return [{"id": m.id, "created": m.created, "owned_by": m.owned_by} 
-            for m in response.data 
-            if any(x in m.id.lower() for x in ["image", "dall", "gpt-image"]) and m.id not in excluded]
 
 # Models to exclude from listing (older/experimental/specialized versions)
 EXCLUDED_MODELS = {
     "gemini": [
-        "models/gemini-2.0-flash-exp-image-generation",  # Experimental, use 2.5 instead
-        "models/imagen-4.0-generate-preview-06-06",      # Preview, use GA version
-        "models/imagen-4.0-ultra-generate-preview-06-06", # Preview, use GA version
+        "models/gemini-2.0-flash-exp-image-generation",
+        "models/imagen-4.0-generate-preview-06-06",
+        "models/imagen-4.0-ultra-generate-preview-06-06",
     ],
     "aws": [
-        # Older generation
         "amazon.titan-image-generator-v2:0",
-        # Stability AI specialized editing tools (not text-to-image generators)
         "stability.stable-creative-upscale-v1:0",
         "stability.stable-conservative-upscale-v1:0",
         "stability.stable-fast-upscale-v1:0",
@@ -58,14 +29,40 @@ EXCLUDED_MODELS = {
         "stability.stable-image-inpaint-v1:0",
     ],
     "openai": [
-        "dall-e-2",  # Deprecated
-        "dall-e-3",  # Legacy, replaced by GPT Image
-        "gpt-image-1",  # Older, use 1.5
-        "gpt-image-1-mini",  # Older, use 1.5
+        "dall-e-2",
+        "dall-e-3",
+        "gpt-image-1",
+        "gpt-image-1-mini",
     ],
 }
 
+# --- Model listing (lazy imports) ---
+
+def get_aws_models():
+    import boto3
+    region = os.getenv("AWS_REGION", "us-east-1")
+    profile = os.getenv("AWS_PROFILE")
+    session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+    client = session.client("bedrock", region_name=region)
+    response = client.list_foundation_models(byOutputModality="IMAGE")
+    
+    excluded = EXCLUDED_MODELS.get("aws", [])
+    return [{"id": m["modelId"], "name": m["modelName"], "provider": m["providerName"],
+             "input": m["inputModalities"], "status": m["modelLifecycle"]["status"]} 
+            for m in response.get("modelSummaries", []) if m["modelId"] not in excluded]
+
+def get_openai_models():
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.models.list()
+    
+    excluded = EXCLUDED_MODELS.get("openai", [])
+    return [{"id": m.id, "created": m.created, "owned_by": m.owned_by} 
+            for m in response.data 
+            if any(x in m.id.lower() for x in ["image", "dall", "gpt-image"]) and m.id not in excluded]
+
 def get_gemini_models():
+    from google import genai
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     response = client.models.list()
     
@@ -73,15 +70,22 @@ def get_gemini_models():
     return [{"id": m.name, "name": m.display_name, "description": m.description} 
             for m in response if "image" in m.name.lower() and m.name not in excluded]
 
-# --- Providers ---
+# --- Providers (lazy client creation) ---
 
 class AWSProvider:
     def __init__(self, model: str):
         self.model = model
-        region = os.getenv("AWS_REGION", "us-east-1")
-        profile = os.getenv("AWS_PROFILE")
-        session = boto3.Session(profile_name=profile) if profile else boto3.Session()
-        self.client = session.client("bedrock-runtime", region_name=region)
+        self._client = None
+    
+    @property
+    def client(self):
+        if self._client is None:
+            import boto3
+            region = os.getenv("AWS_REGION", "us-east-1")
+            profile = os.getenv("AWS_PROFILE")
+            session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+            self._client = session.client("bedrock-runtime", region_name=region)
+        return self._client
     
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
         if reference:
@@ -128,7 +132,14 @@ class AWSProvider:
 class OpenAIProvider:
     def __init__(self, model: str):
         self.model = model
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self._client = None
+    
+    @property
+    def client(self):
+        if self._client is None:
+            from openai import OpenAI
+            self._client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        return self._client
     
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
         if reference:
@@ -137,7 +148,6 @@ class OpenAIProvider:
         return base64.b64decode(response.data[0].b64_json)
     
     def transform(self, image: PIL.Image.Image, prompt: str) -> bytes:
-        # Use images.edit with image as reference for generation
         buffer = BytesIO()
         image.save(buffer, format="PNG")
         buffer.seek(0)
@@ -152,11 +162,19 @@ class OpenAIProvider:
 class GeminiProvider:
     def __init__(self, model: str):
         self.model = model
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        self._client = None
+    
+    @property
+    def client(self):
+        if self._client is None:
+            from google import genai
+            self._client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        return self._client
     
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
         if reference:
             return self.transform(reference, prompt)
+        from google.genai import types
         response = self.client.models.generate_content(
             model=self.model,
             contents=[prompt],
@@ -168,9 +186,10 @@ class GeminiProvider:
         raise ValueError("No image in response")
     
     def transform(self, image: PIL.Image.Image, prompt: str) -> bytes:
+        from google.genai import types
         response = self.client.models.generate_content(
             model=self.model,
-            contents=[f"Transform this image: {prompt}", image],
+            contents=[image, prompt],
             config=types.GenerateContentConfig(response_modalities=['Text', 'Image'])
         )
         for part in response.candidates[0].content.parts:
