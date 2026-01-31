@@ -208,15 +208,15 @@ class GeminiProvider:
         return self._client
     
     def _generate_content(self, contents, config):
-        from google.api_core.exceptions import Unauthenticated, PermissionDenied, GoogleAPIError
         try:
             return self.client.models.generate_content(model=self.model, contents=contents, config=config)
-        except Unauthenticated:
-            raise ValueError("Gemini API key invalid. Check GEMINI_API_KEY.")
-        except PermissionDenied:
-            raise ValueError("Gemini API key lacks permission for this model.")
-        except GoogleAPIError as e:
-            raise ValueError(f"Gemini API error: {e.message}")
+        except Exception as e:
+            err_type = type(e).__name__
+            if "Unauthenticated" in err_type or "401" in str(e):
+                raise ValueError("Gemini API key invalid. Check GEMINI_API_KEY.")
+            elif "PermissionDenied" in err_type or "403" in str(e):
+                raise ValueError("Gemini API key lacks permission for this model.")
+            raise ValueError(f"Gemini API error: {e}")
     
     def generate(self, prompt: str, reference: PIL.Image.Image = None, width: int = 1024, height: int = 1024) -> bytes:
         if reference:
