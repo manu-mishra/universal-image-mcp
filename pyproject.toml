@@ -4,9 +4,15 @@ version = "0.1.0"
 description = "Generic MCP server for image generation supporting AWS Bedrock, OpenAI, and Google Gemini"
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{name = "Manu Mishra", email = "manumishra@example.com"}]
+authors = [{name = "Manu Mishra", email = "manu.masterman@gmail.com"}]
 keywords = ["mcp", "llm", "image-generation", "aws", "openai", "gemini"]
 license = { text = "MIT" }
+
+[project.urls]
+Homepage = "https://github.com/manu-mishra/universal-image-mcp"
+Repository = "https://github.com/manu-mishra/universal-image-mcp"
+"Bug Tracker" = "https://github.com/manu-mishra/universal-image-mcp/issues"
+LinkedIn = "https://www.linkedin.com/in/manu-mishra"
 dependencies = [
     "fastmcp>=2.14.4",
     "pillow>=12.1.0",
