@@ -184,58 +184,68 @@ def prompt_guide() -> str:
     """
     return """# Image Prompt Best Practices
 
-## Structure
-A good prompt includes: Subject + Details + Style + Lighting + Mood + Composition
+## The Formula
+**Subject + Environment + Style + Lighting + Mood + Technical Details**
 
-## Key Elements
+## Building Blocks
 
-**Subject**: Be specific, not generic
-- ❌ "a cat"
-- ✅ "a fluffy orange tabby cat with bright green eyes"
+### Subject (WHO/WHAT)
+❌ "a woman" → ✅ "a 30-year-old Japanese woman with shoulder-length black hair, wearing a vintage 1970s denim jacket, confident expression"
 
-**Setting/Environment**: Ground your subject
-- ❌ "a dog"
-- ✅ "a golden retriever playing in a sunlit meadow with wildflowers"
+❌ "a car" → ✅ "a weathered 1967 Ford Mustang Fastback in faded cherry red, chrome details catching light, slight rust on wheel wells"
 
-**Style**: Specify artistic style
-- "photorealistic", "watercolor painting", "oil painting", "digital art"
-- "anime style", "pixel art", "3D render", "pencil sketch"
+### Environment (WHERE)
+❌ "in a city" → ✅ "on a rain-slicked Tokyo street at 2am, neon signs reflecting in puddles, steam rising from a ramen stall, few pedestrians with umbrellas"
 
-**Lighting**: Sets mood and atmosphere
-- "golden hour lighting", "dramatic shadows", "soft diffused light"
-- "neon-lit", "candlelight", "overcast day", "studio lighting"
+❌ "in nature" → ✅ "in an ancient redwood forest, morning fog weaving between massive trunks, ferns covering the forest floor, single beam of golden light breaking through canopy"
 
-**Mood/Atmosphere**: Emotional tone
-- "serene", "mysterious", "vibrant", "melancholic", "whimsical"
+### Style References
+- **Photographic**: "shot on Hasselblad medium format, Kodak Portra 400 film, shallow depth of field f/1.4"
+- **Cinematic**: "cinematography by Roger Deakins, anamorphic lens flare, teal and orange color grade"
+- **Artistic**: "in the style of Studio Ghibli, soft watercolor backgrounds, whimsical details"
+- **Digital Art**: "trending on ArtStation, octane render, volumetric lighting, 8K detail"
 
-**Composition**: Camera/viewing angle
-- "close-up portrait", "wide angle", "bird's eye view", "macro shot"
-- "centered composition", "rule of thirds", "symmetrical"
+### Lighting
+- "Rembrandt lighting with dramatic shadows on one side of face"
+- "backlit silhouette against golden hour sun, lens flare"
+- "soft overcast diffused light, no harsh shadows"
+- "three-point studio lighting, clean commercial look"
+- "bioluminescent glow emanating from within, dark surroundings"
 
-## Examples
+### Mood/Atmosphere
+- "melancholic and introspective, muted desaturated colors"
+- "electric and energetic, high contrast, vivid saturated hues"
+- "dreamlike and ethereal, soft focus edges, pastel palette"
+- "gritty and raw, high grain, documentary feel"
 
-**Portrait**:
-"A wise elderly woman with silver hair and deep wrinkles, warm smile, 
-wearing a hand-knitted sweater, soft window light, photorealistic portrait"
+## Sophisticated Examples
 
-**Landscape**:
-"Misty mountain valley at sunrise, pine forests, a winding river reflecting 
-pink and orange sky, atmospheric perspective, landscape photography style"
+**Editorial Portrait**:
+"Close-up portrait of a weathered Icelandic fisherman in his 60s, deep-set blue eyes telling stories of the sea, salt-and-pepper beard with ice crystals, wearing a thick wool sweater, standing on a fishing boat deck, overcast North Atlantic light, shot on medium format film, shallow depth of field, muted Nordic color palette"
 
-**Product**:
-"Minimalist ceramic coffee mug on marble surface, steam rising, 
-soft shadows, clean white background, commercial product photography"
+**Architectural**:
+"Interior of a brutalist concrete library at golden hour, dramatic shafts of warm light streaming through geometric skylights, dust particles floating in light beams, a single person reading in a leather chair, long shadows across polished concrete floor, shot with tilt-shift lens, architectural photography style"
 
-**Fantasy**:
-"Ancient library with floating books and glowing orbs, dust particles 
-in light beams, magical atmosphere, detailed digital art style"
+**Product/Commercial**:
+"Luxury perfume bottle on black obsidian surface, bottle is hand-blown glass with amber liquid, single orchid petal beside it, dramatic side lighting creating long shadow, water droplets on surface suggesting freshness, reflection visible in glossy surface, high-end cosmetics advertising style, 8K product photography"
 
-## Tips
-1. More detail = better results (but stay coherent)
-2. Avoid contradictions ("dark bright room")
-3. Put important elements first
-4. Use commas to separate concepts
-5. Reference specific artists/styles for consistent aesthetics
+**Concept Art**:
+"Massive ancient tree city built into a 1000-year-old baobab, multiple levels connected by rope bridges and spiral staircases carved into bark, warm lantern light glowing from windows, tiny figures going about evening activities, flying creatures circling the canopy, painted in the style of Craig Mullins, epic fantasy concept art, atmospheric perspective showing scale"
+
+**Street Photography**:
+"Candid moment in a Havana street, elderly Cuban man playing dominos with friends at a weathered wooden table, cigar smoke curling upward, crumbling pastel colonial building behind them, vintage American car passing in background, harsh midday Caribbean sun creating strong shadows, Leica street photography aesthetic, authentic documentary feel"
+
+**Surreal/Abstract**:
+"A grand piano melting like Dalí's clocks, dripping onto an infinite mirror floor that reflects an impossible sky filled with floating musical notes that transform into birds, the scene transitions from warm sepia tones on the left to cool cyan on the right, hyperrealistic rendering of surreal concept, inspired by Magritte and Dalí"
+
+## Pro Tips
+1. **Layer details**: Start broad, then add specific details that make it unique
+2. **Use sensory language**: Textures, temperatures, sounds implied visually
+3. **Reference real cameras/film**: "shot on 35mm Kodak Ektar" gives specific look
+4. **Name specific artists**: "lighting like Gregory Crewdson" is more precise than "dramatic"
+5. **Include imperfections**: "slight motion blur", "film grain", "lens dust" add realism
+6. **Specify what to avoid**: "no text, no watermarks, no extra limbs"
+7. **Consider negative space**: "minimalist composition with breathing room"
 """
 
 
